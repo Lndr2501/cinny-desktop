@@ -15,7 +15,7 @@ This is a personal fork of [cinnyapp/cinny-desktop](https://github.com/cinnyapp/
 
 Download the latest build from the [Releases page](https://github.com/Lndr2501/cinny-desktop/releases).
 
-**macOS** (`.dmg`: `aarch64` for Apple Silicon, `x64` for Intel)
+**macOS** (Apple Silicon only, `Cinny_*_aarch64.dmg`)
 1. Open the `.dmg` and drag Cinny to Applications.
 2. The app is not notarized. Run once: `xattr -cr /Applications/Cinny.app`
 3. Start it and allow Microphone and, for stream sound, *Screen & System Audio Recording*.

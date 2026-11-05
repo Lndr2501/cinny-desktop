@@ -1,5 +1,5 @@
 name: "Release (fork build)"
-# Builds the macOS (Apple Silicon + Intel) and Linux apps and attaches them to a GitHub release.
+# Builds the macOS (Apple Silicon only) and Linux apps and attaches them to a GitHub release.
 # Trigger: push a tag like v4.12.8-lndr.1  (or run manually with a tag name).
 on:
   push:
@@ -23,9 +23,6 @@ jobs:
           - platform: macos-latest # Apple Silicon
             args: "--target aarch64-apple-darwin --bundles dmg"
             rust-targets: aarch64-apple-darwin
-          - platform: macos-15-intel # Intel
-            args: "--target x86_64-apple-darwin --bundles dmg"
-            rust-targets: x86_64-apple-darwin
           - platform: ubuntu-22.04
             args: "--bundles deb,appimage"
             rust-targets: ""
