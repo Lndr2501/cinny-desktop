@@ -1,11 +1,42 @@
-# Cinny desktop
+# Cinny desktop (Lndr fork)
+
+This is a personal fork of [cinnyapp/cinny-desktop](https://github.com/cinnyapp/cinny-desktop) with a few changes. Frontend changes live in [Lndr2501/cinny](https://github.com/Lndr2501/cinny).
+
+## What's different
+
+- **Voice chat works on macOS.** WebKit's media devices are switched on, so joining a voice room no longer hangs.
+- **Screen sharing stays sharp** while Cinny is in the background (no throttling).
+- **Screen-share sound (macOS).** System audio is captured natively and sent with the stream; there is an on/off button in the call bar. Cinny's own call audio is excluded, so nobody hears an echo.
+- **Deafen mutes mic and sound together** and restores the mic when you undeafen.
+- **Join All Rooms / Auto-Join Rooms** in the space menu: join every room of a space with one click, or automatically whenever new rooms appear.
+- The built-in updater is off, so the app never replaces itself with the upstream version.
+
+## Install
+
+Download the latest build from the [Releases page](https://github.com/Lndr2501/cinny-desktop/releases).
+
+**macOS** (`.dmg`: `aarch64` for Apple Silicon, `x64` for Intel)
+1. Open the `.dmg` and drag Cinny to Applications.
+2. The app is not notarized. Run once: `xattr -cr /Applications/Cinny.app`
+3. Start it and allow Microphone and, for stream sound, *Screen & System Audio Recording*.
+
+**Linux** (`.AppImage` or `.deb`)
+- AppImage: `chmod +x Cinny_*.AppImage && ./Cinny_*.AppImage`
+- Debian/Ubuntu: `sudo apt install ./Cinny_*.deb`
+- Voice and video calls do not work on Linux yet: WebKitGTK has no WebRTC ([upstream #545](https://github.com/cinnyapp/cinny-desktop/issues/545)). Chat and the space features work.
+
+Build it yourself: see *Local development* below.
+
+---
+
+# Cinny desktop (upstream readme)
 
 <a href="https://github.com/cinnyapp/cinny-desktop/releases">
   <img alt="GitHub release downloads" src="https://img.shields.io/github/downloads/cinnyapp/cinny-desktop/total?style=social"></a>
 
 Cinny is a matrix client focusing primarily on simple, elegant and secure interface. The desktop app is made with Tauri.
 
-## Download
+## Download (upstream)
 
 Installers for macOS, Windows and Linux can be downloaded from [Github releases](https://github.com/cinnyapp/cinny-desktop/releases). Releases are signed with a [Ed25519](https://ed25519.cr.yp.to/) public-key.
 
