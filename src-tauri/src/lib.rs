@@ -6,12 +6,39 @@
 // mod menu;
 
 use tauri::{webview::{NewWindowResponse, WebviewWindowBuilder}, WebviewUrl, TitleBarStyle};
+#[cfg(target_os = "macos")]
+mod system_audio;
+
+use tauri::utils::config::BackgroundThrottlingPolicy;
 use tauri_plugin_opener::OpenerExt;
 
 #[cfg(feature = "updater")]
 use tauri_plugin_updater::UpdaterExt;
 #[cfg(feature = "updater")]
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+/// macOS: WKWebView ships with `navigator.mediaDevices` (getUserMedia) switched off, which makes
+/// Element Call hang forever on "Join". Flip the private WebKit switches before the page loads.
+#[cfg(target_os = "macos")]
+fn media_enabled_webview_configuration() -> objc2::rc::Retained<objc2_web_kit::WKWebViewConfiguration> {
+    use objc2::{msg_send, runtime::{Bool, NSObjectProtocol}, sel, MainThreadMarker};
+    use objc2_web_kit::WKWebViewConfiguration;
+
+    let mtm = MainThreadMarker::new().expect("webview setup must run on the main thread");
+    // Private WKPreferences setters. Guard with respondsToSelector so a future WebKit that
+    // drops them degrades to the old behaviour instead of crashing.
+    unsafe {
+        let config = WKWebViewConfiguration::new(mtm);
+        let prefs = config.preferences();
+        if prefs.respondsToSelector(sel!(_setMediaDevicesEnabled:)) {
+            let _: () = msg_send![&*prefs, _setMediaDevicesEnabled: Bool::YES];
+        }
+        if prefs.respondsToSelector(sel!(_setPeerConnectionEnabled:)) {
+            let _: () = msg_send![&*prefs, _setPeerConnectionEnabled: Bool::YES];
+        }
+        config
+    }
+}
 
 pub fn run() {
     
@@ -99,13 +126,31 @@ pub fn run() {
             let window_builder = WebviewWindowBuilder::new(app, "main".to_string(), window_url)
                 .title("Cinny")
                 .disable_drag_drop_handler()
+                // Keep timers/encoders at full speed while the window is hidden or behind a game,
+                // otherwise WebKit throttles screen-share frame rate and quality.
+                .background_throttling(BackgroundThrottlingPolicy::Disabled)
                 .on_new_window(move |url, _features| {
                     let _ = app_handle.opener().open_url(url.as_str(), None::<&str>);
                     NewWindowResponse::Deny
                 });
 
+            // Screen-share audio: native capture bridged to the page (WebKit can't capture it).
             #[cfg(target_os = "macos")]
-            let window_builder = window_builder.title_bar_style(TitleBarStyle::Transparent);
+            let window_builder = match system_audio::spawn(vec![
+                format!("http://localhost:{port}"),
+                "http://localhost:8080".to_string(), // `tauri dev`
+            ]) {
+                Ok(bridge) => window_builder.initialization_script(bridge.init_script()),
+                Err(e) => {
+                    eprintln!("system audio bridge unavailable: {e}");
+                    window_builder
+                }
+            };
+
+            #[cfg(target_os = "macos")]
+            let window_builder = window_builder
+                .title_bar_style(TitleBarStyle::Transparent)
+                .with_webview_configuration(media_enabled_webview_configuration());
             
             window_builder.build()?;
             Ok(())

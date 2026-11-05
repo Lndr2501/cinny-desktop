@@ -43,6 +43,13 @@ updater = [ "tauri-plugin-updater" ]
 tauri-plugin-global-shortcut = "2.3.2"
 tauri-plugin-updater = { version = "2.10.1", features = ["rustls-tls"], optional = true }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-web-kit = { version = "0.3", features = ["WKWebViewConfiguration", "WKPreferences"] }
+# System-audio capture for screen sharing (see src/system_audio.rs)
+screencapturekit = "11"
+tungstenite = "0.30"
+
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]

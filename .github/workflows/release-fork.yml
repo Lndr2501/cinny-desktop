@@ -1,0 +1,91 @@
+name: "Release (fork build)"
+# Builds the macOS (Apple Silicon + Intel) and Linux apps and attaches them to a GitHub release.
+# Trigger: push a tag like v4.12.8-lndr.1  (or run manually with a tag name).
+on:
+  push:
+    tags:
+      - "v*-lndr*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create/update (e.g. v4.12.8-lndr.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest # Apple Silicon
+            args: "--target aarch64-apple-darwin --bundles dmg"
+            rust-targets: aarch64-apple-darwin
+          - platform: macos-15-intel # Intel
+            args: "--target x86_64-apple-darwin --bundles dmg"
+            rust-targets: x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            args: "--bundles deb,appimage"
+            rust-targets: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+
+      - name: Setup node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".node-version"
+          package-manager-cache: false
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable # They use branch based releases
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install cinny dependencies
+        run: cd cinny && npm ci
+
+      - name: Install tauri dependencies
+        run: npm ci
+
+      - name: Disable updater (forks must not update from upstream)
+        run: |
+          git apply 0001-disable-tauri-updater.patch
+          sed -i.bak 's/"createUpdaterArtifacts": "v1Compatible"/"createUpdaterArtifacts": false/' src-tauri/tauri.conf.json
+          grep -n createUpdaterArtifacts src-tauri/tauri.conf.json
+
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@73fb865345c54760d875b94642314f8c0c894afa # v0.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max_old_space_size=4096"
+        with:
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: "Cinny (fork) ${{ github.event.inputs.tag || github.ref_name }}"
+          releaseBody: |
+            Cinny desktop fork with:
+            - working voice chat and screen sharing on macOS (WebKit media devices enabled)
+            - screen-share **system audio** with an on/off button (macOS only, needs "Screen & System Audio Recording" permission)
+            - deafen toggles mic + sound together and restores the mic
+            - "Join All Rooms" and "Auto-Join Rooms" for spaces
+            - no background throttling while streaming
+
+            **macOS:** builds are not notarized. After copying the app to Applications run
+            `xattr -cr /Applications/Cinny.app` once, or right-click the app and choose Open.
+
+            **Linux:** voice and video calls do not work yet. WebKitGTK ships without WebRTC
+            (upstream cinny-desktop#545). Everything else, including the new space features, works.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
